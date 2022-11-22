@@ -93,38 +93,31 @@ class Pix2PixModel(BaseModel):
         # self.real_A = input['A' if AtoB else 'B'].to(self.device)
         # self.real_B = input['B' if AtoB else 'A'].to(self.device)
         # self.image_paths = input['A_paths' if AtoB else 'B_paths']
-        if "RC49" in self.opt.dataroot: # if rotation_chair exp
+        if self.opt.direction == 'AtoB':
             self.real_A = input['A'].to(self.device)
             self.real_B = input['B'].to(self.device)
             self.image_paths = input['A_paths']
-            self.R1 = input['R1']
-            self.R2 = input['R2']
-        else:
-            if self.opt.direction == 'AtoB':
-                self.real_A = input['A'].to(self.device)
-                self.real_B = input['B'].to(self.device)
-                self.image_paths = input['A_paths']
-            elif self.opt.direction == 'BtoA':
-                self.real_A = input['B'].to(self.device)
-                self.real_B = input['A'].to(self.device)
-                self.image_paths = input['B_paths']
-            elif self.opt.direction == 'AtoA':
-                self.real_A = input['A'].to(self.device)
-                self.real_B = input['A'].to(self.device)
-                self.image_paths = input['A_paths']
-            elif self.opt.direction == 'BtoB':
-                self.real_A = input['B'].to(self.device)
-                self.real_B = input['B'].to(self.device)
-                self.image_paths = input['B_paths']
+        elif self.opt.direction == 'BtoA':
+            self.real_A = input['B'].to(self.device)
+            self.real_B = input['A'].to(self.device)
+            self.image_paths = input['B_paths']
+        elif self.opt.direction == 'AtoA':
+            self.real_A = input['A'].to(self.device)
+            self.real_B = input['A'].to(self.device)
+            self.image_paths = input['A_paths']
+        elif self.opt.direction == 'BtoB':
+            self.real_A = input['B'].to(self.device)
+            self.real_B = input['B'].to(self.device)
+            self.image_paths = input['B_paths']
 
-    def forward(self, R2=1.):
-        if "RC49" in self.opt.dataroot:  
+    def forward(self):
+        if "edges2handbags" in self.opt.dataroot:  
             if self.isTrain:
-                self.fake_B = self.netG(self.real_A, self.R1, self.R2, True) # train time code
+                self.fake_B = self.netG(self.real_A, True) # train time code
             else:
-                self.fake_B = self.netG(self.real_A, self.R1, self.R1 + R2, True) # test time code 
+                self.fake_B = self.netG(self.real_A, True) # test time code 
         else:
-            self.fake_B = self.netG(self.real_A, 0., R2, False)
+            self.fake_B = self.netG(self.real_A, False)
             if self.opt.residual:
                 self.fake_B = self.fake_B + self.real_A
 

@@ -24,7 +24,6 @@ import torch.nn.utils.weight_norm as WeightNorm
 # from memcnn.models.revop import InvertibleModuleWrapper, create_coupling
 # import memcnn
 import pdb
-from torchdiffeq import odeint_adjoint as odeint
 
 
 def norm(dim):
@@ -50,10 +49,10 @@ class ConcatConv2d(nn.Module):
         return self._layer(ttx)
 
 
-class ODEfunc(nn.Module):
+class DCFfunc(nn.Module):
 
     def __init__(self, dim):
-        super(ODEfunc, self).__init__()
+        super(DCFfunc, self).__init__()
         self.norm1 = norm(dim)
         # self.relu = nn.ReLU(inplace=True)
         self.relu = nn.Sigmoid()
@@ -74,26 +73,6 @@ class ODEfunc(nn.Module):
         out = self.norm3(out)
         return out
 
-
-class ODEBlock(nn.Module):
-
-    def __init__(self, odefunc):
-        super(ODEBlock, self).__init__()
-        self.odefunc = odefunc
-        self.integration_time = torch.tensor([0, 1]).float()
-
-    def forward(self, x, t):
-        # self.integration_time = self.integration_time.type_as(x)
-        out = odeint(self.odefunc, x, t, rtol=1e-3, atol=1e-3)
-        return out[1]
-
-    @property
-    def nfe(self):
-        return self.odefunc.nfe
-
-    @nfe.setter
-    def nfe(self, value):
-        self.odefunc.nfe = value
 
 # 
 BIAS = True
@@ -124,9 +103,9 @@ class norm_layer(nn.Module):
         return x
 
 
-class rand_base_generator_odenet(nn.Module):
+class rand_base_generator_dcfnet(nn.Module):
     def __init__(self, num_layers, num_bases, kernel_size, transpose=False, fix=False):
-        super(rand_base_generator_odenet, self).__init__()
+        super(rand_base_generator_dcfnet, self).__init__()
         self.fix = fix
 
         dim = num_layers*kernel_size*kernel_size*num_bases
@@ -135,7 +114,7 @@ class rand_base_generator_odenet(nn.Module):
         self.random_vec = Parameter(torch.randn((1, dim, 1, 1)))
 
 
-        self.ode = ODEBlock(ODEfunc(dim))
+        self.dcf = DCFfunc(dim)
 
         self.num_bases = num_bases
         self.kernel_size = kernel_size
@@ -147,17 +126,13 @@ class rand_base_generator_odenet(nn.Module):
         self.random_vec.data.normal_(0.0, std)
         self.termination = None
         
-    def forward(self, R1=0, R2=1, is_conditional= False):
+    def forward(self):
         t = torch.zeros(2).cuda()
-        if is_conditional:
-            # only for RC49 rotating chair experiment 
-            t[1] = abs(R2 - R1) # target angle
-        else:
-            t[1].uniform_(0.2, 1.0) # for stochastic training
+        t[1].uniform_(0.2, 1.0) # for stochastic training
 
-        return self.ode(self.random_vec, t).view(self.view_shape) 
+        return self.dcf(self.random_vec, t[1]).view(self.view_shape) 
 
-rand_base_generator = rand_base_generator_odenet
+rand_base_generator = rand_base_generator_dcfnet
 
 class _ConvNd(Module):
 

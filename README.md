@@ -1,11 +1,12 @@
 
-# Image Generation using Continuous Filter Atoms
+# Repository for ECE 570 Final Checkpoint Code Submission.
 
-This repository is the official implementation for training and testing the 'Rotating Chair' experiment presented in "Image Generation using Continuous Filter Atoms".
+This repository is the implementation for training and testing the experiment presented in the final report of the class ECE 570.
 
-Our codes adopted the official implementation of Pix2Pix and CycleGAN from [Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix). 
+Note that codes are adopted from the official implementation of Pix2Pix from [Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix). 
 
-The experiment is run on the RC-49 dataset. The dataset (h5 file) can be easily downloaded from [Continuous Conditional Generative Adversarial Networks](https://github.com/UBCDingXin/improved_CcGAN).
+Also, the codes adopt the official implementation of DCF-Network from [DCFNet: Deep Neural Network with Decomposed Convolutional Filters](https://github.com/ZeWang95/DCFNet-Pytorch). 
+The experiment is run on the Edges2Handbag dataset. The dataset can be easily downloaded from (https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/docs/datasets.md).
 
 
 ## Requirements
@@ -20,11 +21,11 @@ bash conda_deps.sh
 
 ## Dataset
 
-Download the RC-49 dataset (h5 file) and place it inside the 'dataset' folder.
+Download the Edges2Handbags dataset and place it inside the 'dataset' folder.
 
 Run this command to extract png files and split them into train and test datasets. 
 ```setup
-bash init.sh
+bash ./datasets/create_dataset.sh edges2handbags
 ```
 
 ## Training
@@ -35,14 +36,25 @@ To train the model, run this command:
 bash train.sh
 ```
 
-## Evaluation
+## Testing
 
-To evaluate our model, run:
+To test our model, run:
 
 ```eval
 bash test.sh
 ```
 
-## Pre-trained Models
+## Code references and guidelines to new codes
 
-The pre-trained models are included in the 'checkpoints/rc49' folder. 
+Entire structure of codes are borrowed from the official implementation of Pix2Pix from [Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix). However, codes related to model implementation are all self-produced. 
+
+Specifically, `networks.py`, `pix2pix_model.py`, are modified from the official implementation of Pix2Pix and `test.py`, `DCF.py` are newly added (student's original code).
+
+In `networks.py` and `pix2pix_model.py`, the generator of Pix2Pix model is modified to be decomposed over filter atoms and coefficients. 
+Specifically, all the convolutional layers in the Resblocks of Resnet style generator of the Pix2Pix model are decomposed. Consequently, the original Conv2D filters in the Pix2Pix generator are all replaced into Decomposed-Conv2D filters. 
+
+Code for decomposed convolutional filters can be found in `DCF.py`, under the name of `Conv_DCFre` class.
+`Conv_DCFre` class has been modified from the official implementation of DCF-Network from [DCFNet: Deep Neural Network with Decomposed Convolutional Filters](https://github.com/ZeWang95/DCFNet-Pytorch). 
+`rand_base_generator_dcfnet` class in the `DCF.py` script has been newly added in order to generate convolutional filters in a stochastic way. 
+
+`test.py` provides a python script to reproduce the results provided in the project report.  

@@ -35,30 +35,27 @@ if __name__ == '__main__':
     ttt = []
     imtype = np.uint8
 
-    # 0.0 ~ 45.0 (interval : 2.5/90)
-    t_list = list (np.arange(2.5/90, 45/90, 2.5/90))
+    fig, axes = plt.subplots(1, 11)
 
-    fig, axes = plt.subplots(1, len(t_list)+1)
-
-    save_dir = "./results/rc49/"
+    save_dir = "./results/edges2handbags/"
 
     start_index = 0
 
-    # test
-    for chair_type, data in enumerate(dataset):
-        print("current iter: {}".format(chair_type))
+    # test for ten times
+    for itrs, data in enumerate(dataset):
+        print("current iter: {}".format(itrs))
         res = []
-        if start_index + opt.num_test == chair_type:
+        if start_index + opt.num_test == itrs:
             break
 
         # pdb.set_trace()
         model.set_input(data)
         
-        if not os.path.exists(save_dir + str(chair_type)):
-            os.mkdir(save_dir + str(chair_type))
+        if not os.path.exists(save_dir + str(itrs)):
+            os.mkdir(save_dir + str(itrs))
 
-        for idx, t in enumerate(t_list): # for every terminating point 't' 
-            model.test(t)
+        for idx in range(10): # for every terminating point 't' 
+            model.test()
             if idx == 0:
                 realA = model.real_A[0].cpu().detach().numpy()
                 realB = model.real_B[0].cpu().detach().numpy()  
@@ -75,14 +72,14 @@ if __name__ == '__main__':
             fakeB = (np.transpose(fakeB, (1, 2, 0)) + 1) / 2.0 * 255.0
             fakeB = fakeB.astype(imtype)
             fakeB_im  = Image.fromarray(fakeB)
-            fakeB_im.save(save_dir + str(chair_type)+ "/fakeB_" + str(t) + ".png") # save fakeB with respect to terminating point 't'
+            fakeB_im.save(save_dir + str(itrs)+ "/fakeB_" + str(t) + ".png") # save fakeB with respect to terminating point 't'
             res.append(fakeB)
 
         for i,im in enumerate(res): 
             axes[i].imshow(res[i])
             axes[i].axis('off')
         
-        plt.savefig(save_dir + str(chair_type) + "/result.png", pad_inches=0, dpi=300) # save overall plot
+        plt.savefig(save_dir + str(itrs) + "/result.png", pad_inches=0, dpi=300) # save overall plot
         plt.cla()
         realA_im  = Image.fromarray(realA)
-        realA_im.save(save_dir + str(chair_type)+ "/realA.png") # save realA
+        realA_im.save(save_dir + str(itrs)+ "/realA.png") # save realA

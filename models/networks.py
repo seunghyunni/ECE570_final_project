@@ -74,14 +74,14 @@ def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=[]):
     return net
 
 
-def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, init_type='normal', init_gain=0.02, gpu_ids=[], n_downsampling=2, odefunc_=False):
+def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, init_type='normal', init_gain=0.02, gpu_ids=[], n_downsampling=2, is_dcf_=False):
     net = None
     norm_layer = get_norm_layer(norm_type=norm)
 
     if netG == 'resnet_9blocks':
-        net = ResnetGenerator(input_nc = input_nc, output_nc = output_nc, ngf = ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=9, n_downsampling=n_downsampling, odefunc = odefunc_)
+        net = ResnetGenerator(input_nc = input_nc, output_nc = output_nc, ngf = ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=9, n_downsampling=n_downsampling, is_dcf_ = is_dcf_)
     elif netG == 'resnet_6blocks':
-        net = ResnetGenerator(input_nc = input_nc, output_nc = output_nc, ngf = ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=6, n_downsampling=n_downsampling, odefunc = odefunc_)
+        net = ResnetGenerator(input_nc = input_nc, output_nc = output_nc, ngf = ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=6, n_downsampling=n_downsampling, is_dcf_ = is_dcf_)
     elif netG == 'unet_128':
         net = UnetGenerator(input_nc, output_nc, 7, ngf, norm_layer=norm_layer, use_dropout=use_dropout)
     elif netG == 'unet_256':
@@ -176,7 +176,7 @@ class ResnetGenerator_layer(nn.Module):
         mult = 2**n_downsampling
         # for i in range(n_blocks-2):
         for i in range(n_blocks):
-            model += [ResnetBlockR(ngf * mult, padding_type=padding_type, 
+            model += [ResnetBlockRe(ngf * mult, padding_type=padding_type, 
                 norm_layer=norm_layer, use_dropout=use_dropout, use_bias=use_bias)]
 
 
@@ -205,16 +205,16 @@ class ResnetGenerator_layer(nn.Module):
         return self.model(input)
 
 
-# For Pix2Pix with Resnet ODE (Continuous filter atoms)
+# For Pix2Pix with DCF net
 class ResnetGenerator_net(nn.Module):
     def __init__(self, input_nc, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, 
-        use_dropout=False, n_blocks=9, padding_type='reflect', n_downsampling=2, odefunc = False):
+        use_dropout=False, n_blocks=9, padding_type='reflect', n_downsampling=2, is_dcf = False):
         assert(n_blocks >= 0)
         super(ResnetGenerator_net, self).__init__()
         self.input_nc = input_nc
         self.output_nc = output_nc
         self.ngf = ngf
-        self.odefunc = odefunc
+        self.dcf = is_dcf
         if type(norm_layer) == functools.partial:
             use_bias = norm_layer.func == nn.InstanceNorm2d
         else:
@@ -242,12 +242,12 @@ class ResnetGenerator_net(nn.Module):
 
         self.basis_gen_layers = []
 
-        if odefunc: # is use ode-based bases decomposition for net G_A
+        if is_dcf: # is use ode-based bases decomposition for net G_A
             for i in range(n_blocks):
                 model += [ResnetBlockRe(ngf * mult, padding_type=padding_type, 
                     norm_layer=norm_layer, use_dropout=use_dropout, use_bias=use_bias)]
                 self.basis_gen_layers.append(model[-1].conv_block[1])
-            self.basis_gen = rand_base_generator_odenet(num_layers= len(self.basis_gen_layers), num_bases= 8,kernel_size=3)
+            self.basis_gen = rand_base_generator(num_layers= len(self.basis_gen_layers), num_bases= 8,kernel_size=3)
         
         else: # no decomposition for net G_B
             for i in range(n_blocks):
@@ -276,9 +276,9 @@ class ResnetGenerator_net(nn.Module):
 
         print(self.model)
 
-    def forward(self, input, R1, R2, is_conditional):
-        if self.odefunc:
-            basis = self.basis_gen(R1 = R1, R2 = R2, is_conditional = is_conditional) # Forward ODE function --> single ode for net G
+    def forward(self, input):
+        if self.dcf:
+            basis = self.basis_gen() # DCF NET
 
             # pdb.set_trace()
             for b, l in zip(basis, self.basis_gen_layers): # insert produced bases into conv block of ResBlock
